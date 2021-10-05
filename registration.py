@@ -36,8 +36,49 @@ class registration:
                     Values are a dictionaries with 'point_in_pc_1', 'point_in_pc_2' identifying the pair of points in the correspondence.
         :rtype: dict
         """
+        
+        # Dictionary of correspondance
+        correspondance = {}
 
-        pass
+        row_1 = 0
+        for point_1 in self.scan_1: #np.array, dim (N,3)
+            # for every point in cloud 1
+
+            closest_point = inf
+            key = 0
+
+            # Extract coordinates
+            x_1 = point_1[0]
+            y_1 = point_1[1]
+            z_1 = point_1[2]
+
+            row_2 = 0
+            for point_2 in self.scan_2: #np.array, dim (N,3)
+                # for every point in cloud 2
+
+                # Extract coordinates
+                x_2 = point_2[0]
+                y_2 = point_2[1]
+                z_2 = point_2[2]
+
+                # Calculate geometric distance between the points:
+                dist_between_points = sqrt((x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2)
+
+                # If distance is shorter, update
+                if dist_between_points < closest_point:
+                    closest_point = dist_between_points
+                    key = int( (str(row_1) + str(row_2)))
+
+                row_2 += 1
+
+            # Save closest point
+            correspondance[key] = { 'point_in_pc_1' : point_1, 
+                                        'point_in_pc_1' : point_2,
+                                        'dist2' : dist_between_points
+                                        }
+            row_1 += 1
+
+        return correspondance
 
     def compute_pose(
             self,
