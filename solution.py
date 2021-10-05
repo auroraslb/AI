@@ -61,57 +61,6 @@ class point_cloud_data_iasd(point_cloud_data):
             file: str
             ) -> bool:
 
-        #f = open(file, "r")
-        #print(f.read())
-
-        Array = []
-        lines = []
-        with open(file) as f:
-            lines = f.readlines()
-
-        print(f)
-
-        count1 = -1
-        count2 = 0
-        count3 = 0
-        is_vertex = False
-        element_vertex = 0
-
-        for line in lines:
-            count1 += 1
-
-            if "element vertex" in line:
-                element_vertex = int(line[15:])
-                print(element_vertex)
-
-            if "property" in line:
-                print(count3)
-                print(line)
-
-                if "property float x" in line:
-                    x_index = count3
-                if "property float y" in line:
-                    y_index = count3
-                if "property float z" in line:
-                    z_index = count3
-
-                count3 += 1
-            
-            if "end_header" in line:
-                count2 = count1
-                is_vertex = True
-
-            #print(element_vertex)
-
-            #if (((count1-count2) < element_vertex) and is_vertex):
-            #    print(count1-count2)
-            
-            #print(Array)
-
-        print(x_index)
-        print(y_index)
-        print(z_index)
-
         """Loads a point cloud from a ply file
 
         :param file: source file
@@ -120,5 +69,35 @@ class point_cloud_data_iasd(point_cloud_data):
         the ply was OK or not
         :rtype: bool
         """
-        
-        pass
+
+        lines = []
+        with open(file) as f:
+            lines = f.readlines()
+
+        reading_vertices = False
+
+        for line_number, line in enumerate(lines, 0):
+            if 'element vertex' in line:
+                nb_vertices = int(line.split()[2])
+                first_property_line = line_number+1
+
+            if 'property float x' in line:
+                x = line_number - first_property_line
+            elif 'property float y' in line:
+                y = line_number - first_property_line
+            elif 'property float z' in line:
+                z = line_number - first_property_line
+
+            if reading_vertices:
+                nb_vertices = nb_vertices-1
+                if nb_vertices == 0:
+                    reading_vertices = False
+                properties = line.split()
+                coordinates = [float(properties[x]), float(properties[y]), float(properties[z])]
+                self.data[line_number-first_vertice_line] = coordinates
+            
+            if 'end_header' in line:
+                reading_vertices = True
+                first_vertice_line = line_number+1
+
+        return True
