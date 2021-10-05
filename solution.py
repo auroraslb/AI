@@ -83,7 +83,7 @@ class registration_iasd(registration):
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
 
-            closest_dist = 10000000000
+            closest_dist = Inf
             closest_point = None
             key = 0
 
