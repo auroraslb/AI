@@ -23,8 +23,43 @@ class registration_iasd(registration):
         :return: rotation and translation that align the correspondences
         :rtype: Tuple[np.array, np.array]
         """
+
+        pi = []
+        qi = []
+
+        for value in correspondences.iteritems():
+            pi.append(value['point in pc 1'])
+            qi.append(value['point in pc 2'])
+
+        #Get the center point of S1 
+        p_average = np.mean(pi, axis=0)
+        #Get the center point of S2
+        q_average = np.mean(qi, axis=0)
+
+        #Frame aligned with the center of S1
+        p_aligned = pi - p_average
+        #Frame aligned with the center of S2
+        q_aligned = qi - q_average
+
+        #Stack all ep i in a matrix of dimension N x 3
+        P = np.stack( p_aligned, axis=0 )
+        #Stack all eq i in a matrix of dimension N x 3
+        Q = np.stack( q_aligned, axis=0 )
+
+        #Get matrix A of dimension 3 x 3
+        A = (Q.transpose()).dot(P)
+
+        #U, Sum, and Vt using SVD, all of dimension 3 x 3
+        U, Sum, V_t = np.linalg.svd(A, full_matrices=True)
         
-        pass
+        #Get the output rotation
+        R_out = (U.dot(np.diag([1,1,np.linalg.det(U.dot(V_t))]))).dot(V_t)
+        
+        #Get the output translation
+        t_out = q_average - R_out.dot(p_average)
+        
+        #Return tuple of R_out and t_out
+        return R_out, t_out
 
 
     def find_closest_points(self) -> dict:
