@@ -60,6 +60,58 @@ class point_cloud_data_iasd(point_cloud_data):
             self,
             file: str
             ) -> bool:
+
+        #f = open(file, "r")
+        #print(f.read())
+
+        Array = []
+        lines = []
+        with open(file) as f:
+            lines = f.readlines()
+
+        print(f)
+
+        count1 = -1
+        count2 = 0
+        count3 = 0
+        is_vertex = False
+        element_vertex = 0
+
+        for line in lines:
+            count1 += 1
+
+            if "element vertex" in line:
+                element_vertex = int(line[15:])
+                print(element_vertex)
+
+            if "property" in line:
+                print(count3)
+                print(line)
+
+                if "property float x" in line:
+                    x_index = count3
+                if "property float y" in line:
+                    y_index = count3
+                if "property float z" in line:
+                    z_index = count3
+
+                count3 += 1
+            
+            if "end_header" in line:
+                count2 = count1
+                is_vertex = True
+
+            #print(element_vertex)
+
+            #if (((count1-count2) < element_vertex) and is_vertex):
+            #    print(count1-count2)
+            
+            #print(Array)
+
+        print(x_index)
+        print(y_index)
+        print(z_index)
+
         """Loads a point cloud from a ply file
 
         :param file: source file
