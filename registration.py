@@ -73,11 +73,12 @@ class registration:
 
             # Save closest point
             correspondance[key] = { 'point_in_pc_1' : point_1, 
-                                        'point_in_pc_1' : point_2,
+                                        'point_in_pc_2' : point_2,
                                         'dist2' : dist_between_points
                                         }
             row_1 += 1
-
+        
+        #print('Corr_dict:', correspondance)
         return correspondance
 
     def compute_pose(
@@ -96,9 +97,9 @@ class registration:
         pi = []
         qi = []
 
-        for value in correspondences.iteritems():
-            pi.append(value['point in pc 1'])
-            qi.append(value['point in pc 2'])
+        for value in correspondences.keys():
+            pi.append(correspondences[value]['point_in_pc_1'])
+            qi.append(correspondences[value]['point_in_pc_2'])
 
         #Get the center point of S1 
         p_average = np.mean(pi, axis=0)

@@ -75,11 +75,46 @@ class point_cloud_data:
             ) -> bool:
         """Loads a point cloud from a ply file
 
-        :param file: path to the ply file
+        :param file: source file
         :type file: str
+        :return: returns true or false, depending on whether the method
+        the ply was OK or not
+        :rtype: bool
         """
 
-        pass
+        lines = []
+        with open(file) as f:
+            lines = f.readlines()
+
+        reading_vertices = False
+
+        for line_number, line in enumerate(lines, 0):
+            if 'element vertex' in line:
+                nb_vertices = int(line.split()[2])
+                first_property_line = line_number+1
+
+            if 'property float x' in line:
+                x = line_number - first_property_line
+            elif 'property float y' in line:
+                y = line_number - first_property_line
+            elif 'property float z' in line:
+                z = line_number - first_property_line
+
+            if reading_vertices:
+                nb_vertices = nb_vertices-1
+                if nb_vertices == 0:
+                    reading_vertices = False
+                properties = line.split()
+                coordinates = [float(properties[x]), float(properties[y]), float(properties[z])]
+                self.data[line_number-first_vertice_line] = coordinates
+            
+            if 'end_header' in line:
+                reading_vertices = True
+                first_vertice_line = line_number+1
+
+        return True
+
+        
 
     def plot_list_points(self) -> None:
 
