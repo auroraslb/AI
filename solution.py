@@ -83,7 +83,8 @@ class registration_iasd(registration):
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
 
-            closest_point = Inf
+            closest_dist = 10000000000
+            closest_point = None
             key = 0
 
             # Extract coordinates
@@ -104,16 +105,17 @@ class registration_iasd(registration):
                 dist_between_points = sqrt((x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2)
 
                 # If distance is shorter, update
-                if dist_between_points < closest_point:
-                    closest_point = dist_between_points
+                if dist_between_points < closest_dist:
+                    closest_dist = dist_between_points
                     key = int( (str(row_1) + str(row_2)))
+                    closest_point = point_2
 
                 row_2 += 1
 
             # Save closest point
             correspondance[key] = { 'point_in_pc_1': point_1, 
-                                        'point_in_pc_2': point_2,
-                                        'dist2': dist_between_points
+                                        'point_in_pc_2': closest_point,
+                                        'dist2': closest_dist
                                         }
             row_1 += 1
         
