@@ -4,7 +4,7 @@ from get_pointcloud import point_cloud_data
 
 import numpy as np
 from typing import Tuple
-from math import sqrt
+from math import nan, sqrt
 
 
 class registration_iasd(registration):
@@ -83,7 +83,7 @@ class registration_iasd(registration):
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
 
-            closest_dist = 10000000000
+            closest_dist = Inf
             closest_point = None
             key = 0
 
@@ -102,7 +102,7 @@ class registration_iasd(registration):
                 z_2 = point_2[2]
 
                 # Calculate geometric distance between the points:
-                dist_between_points = sqrt((x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2)
+                dist_between_points = (x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2
 
                 # If distance is shorter, update
                 if dist_between_points < closest_dist:
@@ -115,7 +115,7 @@ class registration_iasd(registration):
             # Save closest point
             correspondance[key] = { 'point_in_pc_1': point_1, 
                                         'point_in_pc_2': closest_point,
-                                        'dist2': closest_dist
+                                        'dist2': sqrt(closest_dist)
                                         }
             row_1 += 1
         
@@ -172,8 +172,12 @@ class point_cloud_data_iasd(point_cloud_data):
                 if nb_vertices == 0:
                     reading_vertices = False
                 properties = line.split()
-                coordinates = [float(properties[x]), float(properties[y]), float(properties[z])]
-                self.data[line_number-first_vertice_line] = coordinates
+
+                try:
+                    coordinates = [float(properties[int(x)]), float(properties[int(y)]), float(properties[int(z)])]
+                    self.data[line_number-first_vertice_line] = coordinates
+                except:
+                    return False
             
             if 'end_header' in line:
                 reading_vertices = True
