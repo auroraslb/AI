@@ -79,45 +79,24 @@ class registration_iasd(registration):
         # Dictionary of correspondance
         correspondance = {}
 
-        row_1 = 0
+        sorted_scan2 = self.scan_2[np.lexsort((self.scan_2[:, 0], -self.scan_2[:, 1]))]
+
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
 
-            closest_dist = Inf
-            closest_point = None
-            key = 0
+            idx = np.searchsorted(sorted_scan2, point_1, side="left")
+            if idx > 0 and (idx == len(sorted_scan2) or np.abs(point_1 - sorted_scan2[idx-1]) < np.abs(point_1 - sorted_scan2[idx])):
+                point_2 = sorted_scan2[idx-1]
+            else:
+                point_2 = sorted_scan2[idx]
+            
+            key = int( (str(point_1) + str(point_2)))
+            closest_dist = np.sqrt(np.sum((point_1-point_2)**2))
 
-            # Extract coordinates
-            x_1 = point_1[0]
-            y_1 = point_1[1]
-            z_1 = point_1[2]
-
-            row_2 = 0
-            for point_2 in self.scan_2: #np.array, dim (N,3)
-                # for every point in cloud 2
-
-                # Extract coordinates
-                x_2 = point_2[0]
-                y_2 = point_2[1]
-                z_2 = point_2[2]
-
-                # Calculate geometric distance between the points:
-                dist_between_points = (x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2
-
-                # If distance is shorter, update
-                if dist_between_points < closest_dist:
-                    closest_dist = dist_between_points
-                    key = int( (str(row_1) + str(row_2)))
-                    closest_point = point_2
-
-                row_2 += 1
-
-            # Save closest point
             correspondance[key] = { 'point_in_pc_1': point_1, 
-                                        'point_in_pc_2': closest_point,
-                                        'dist2': sqrt(closest_dist)
-                                        }
-            row_1 += 1
+                                    'point_in_pc_2': point_2,
+                                    'dist2': sqrt(closest_dist)
+                                  }
         
         #print('Corr_dict:', correspondance)
         return correspondance
