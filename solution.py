@@ -1,11 +1,9 @@
-from numpy.core.numeric import Inf
-from numpy.core.records import array
 from registration import registration
 from get_pointcloud import point_cloud_data
 
 import numpy as np
 from typing import Tuple
-from math import nan, sqrt
+from math import sqrt
 
 
 class registration_iasd(registration):
@@ -80,47 +78,39 @@ class registration_iasd(registration):
         # Dictionary of correspondance
         correspondance = {}
 
-       # sorted_scan2_index = np.argsort(self.scan_2)
-        #sorted_scan2 = np.array(self.scan_2[sorted_scan2_index])
-
-        #scan_2 = np.asarray(self.scan_2)
+        # Compute sum of squares for both point clouds (needed for finding closest point later)
+        square_sum_scan_1 = np.sum(np.square(self.scan_1),axis=1)
+        square_sum_scan_2 = np.sum(np.square(self.scan_2),axis=1)
         
+        row_1 = 0
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
-            idx = np.argmin(np.sum((self.scan_2-point_1)**2))
-            
-        
-            #idx = np.searchsorted(sorted_scan2, point_1, side="left")
-            
-            """
-            if idx > 0 and (idx == len(sorted_scan2) or np.abs(point_1 - sorted_scan2[idx-1]) < np.abs(point_1 - sorted_scan2[idx])):
-                point_2 = sorted_scan2[idx-1]
-            else:
-                point_2 = sorted_scan2[idx]
-            """
-            """
-            if idx >= len(self.scan_2):
-                idx_point_2 = sorted_scan2_index[len(self.scan_2) - 1]
-            elif idx == 0:
-                idx_point_2 = sorted_scan2_index[0]
-            else:
-                if abs(point_1 - sorted_scan2[idx-1]) < abs(point_1 - sorted_scan2[idx]):
-                    idx_point_2 = sorted_scan2_index[idx-1]
-                else:
-                    idx_point_2 = sorted_scan2_index[idx]
-            
-            point_2 = self.scan_2[idx_point_2]
-            
-            key = int( (str(point_1) + str(point_2)))
-            closest_dist = np.sqrt(np.sum((point_1-point_2)**2))
-            """
 
-            correspondance[key] = { 'point_in_pc_1': point_1, 
-                                    'point_in_pc_2': point_2,
-                                    'dist2': sqrt(closest_dist)
-                                  }
-        
-        #print('Corr_dict:', correspondance)
+            # Extract coordinates
+            x_1 = point_1[0]
+            y_1 = point_1[1]
+            z_1 = point_1[2]
+
+            dot_product = 2*np.dot(self.scan_1[row_1], np.transpose(self.scan_2))
+            distance = np.sqrt((square_sum_scan_1[row_1] + square_sum_scan_2 - dot_product))
+            
+            index_closest_point = np.argmin(distance, axis=0)
+            point_2 = self.scan_2[index_closest_point]
+
+            # Extract coordinates
+            x_2 = point_2[0]
+            y_2 = point_2[1]
+            z_2 = point_2[2]
+
+            closest_dist = sqrt((x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2)
+
+            correspondance[row_1] = { 'point_in_pc_1': point_1, 
+                                      'point_in_pc_2': point_2,
+                                      'dist2': sqrt(closest_dist)
+                                    }
+            
+            row_1 += 1
+    
         return correspondance
 
 
