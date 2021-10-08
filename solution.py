@@ -79,37 +79,34 @@ class registration_iasd(registration):
         correspondance = {}
 
         # Compute sum of squares for both point clouds (needed for finding closest point later)
+        # ie. get x**2 + y**2 + z**2
         square_sum_scan_1 = np.sum(np.square(self.scan_1),axis=1)
         square_sum_scan_2 = np.sum(np.square(self.scan_2),axis=1)
         
-        row_1 = 0
+        point_nb_scan_1 = 0
+
+        # for every point in cloud 1
         for point_1 in self.scan_1: #np.array, dim (N,3)
-            # for every point in cloud 1
 
-            # Extract coordinates
-            x_1 = point_1[0]
-            y_1 = point_1[1]
-            z_1 = point_1[2]
-
-            dot_product = 2*np.dot(self.scan_1[row_1], np.transpose(self.scan_2))
-            distance = np.sqrt((square_sum_scan_1[row_1] + square_sum_scan_2 - dot_product))
+            # Distance is root of 
+            # (x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2
+            # = x_1**2 + x_2**2 - 2*x_1*x_2 + ...
+            # For current point in scan 1, calculate distances to points in scan 2
+            dot_product = 2*np.dot(self.scan_1[point_nb_scan_1], np.transpose(self.scan_2))
+            distance = np.sqrt((square_sum_scan_1[point_nb_scan_1] + square_sum_scan_2 - dot_product))
             
+            # Find index of smallest distance, ie. closest point
             index_closest_point = np.argmin(distance, axis=0)
-            point_2 = self.scan_2[index_closest_point]
+            closest_point = self.scan_2[index_closest_point]
+            closest_dist = distance[index_closest_point]
 
-            # Extract coordinates
-            x_2 = point_2[0]
-            y_2 = point_2[1]
-            z_2 = point_2[2]
-
-            closest_dist = sqrt((x_1-x_2)**2 + (y_1-y_2)**2 + (z_1-z_2)**2)
-
-            correspondance[row_1] = { 'point_in_pc_1': point_1, 
-                                      'point_in_pc_2': point_2,
-                                      'dist2': sqrt(closest_dist)
-                                    }
+            # Add to correspondance, using the number of the point in scan 1 as key
+            correspondance[point_nb_scan_1] = { 'point_in_pc_1': point_1, 
+                                                'point_in_pc_2': closest_point,
+                                                'dist2': sqrt(closest_dist)
+                                              }
             
-            row_1 += 1
+            point_nb_scan_1 += 1
     
         return correspondance
 
