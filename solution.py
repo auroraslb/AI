@@ -1,4 +1,5 @@
 from numpy.core.numeric import Inf
+from numpy.core.records import array
 from registration import registration
 from get_pointcloud import point_cloud_data
 
@@ -79,19 +80,40 @@ class registration_iasd(registration):
         # Dictionary of correspondance
         correspondance = {}
 
-        sorted_scan2 = self.scan_2[np.lexsort((self.scan_2[:, 0], -self.scan_2[:, 1]))]
+       # sorted_scan2_index = np.argsort(self.scan_2)
+        #sorted_scan2 = np.array(self.scan_2[sorted_scan2_index])
 
+        #scan_2 = np.asarray(self.scan_2)
+        
         for point_1 in self.scan_1: #np.array, dim (N,3)
             # for every point in cloud 1
-
-            idx = np.searchsorted(sorted_scan2, point_1, side="left")
+            idx = np.argmin(np.sum((self.scan_2-point_1)**2))
+            
+        
+            #idx = np.searchsorted(sorted_scan2, point_1, side="left")
+            
+            """
             if idx > 0 and (idx == len(sorted_scan2) or np.abs(point_1 - sorted_scan2[idx-1]) < np.abs(point_1 - sorted_scan2[idx])):
                 point_2 = sorted_scan2[idx-1]
             else:
                 point_2 = sorted_scan2[idx]
+            """
+            """
+            if idx >= len(self.scan_2):
+                idx_point_2 = sorted_scan2_index[len(self.scan_2) - 1]
+            elif idx == 0:
+                idx_point_2 = sorted_scan2_index[0]
+            else:
+                if abs(point_1 - sorted_scan2[idx-1]) < abs(point_1 - sorted_scan2[idx]):
+                    idx_point_2 = sorted_scan2_index[idx-1]
+                else:
+                    idx_point_2 = sorted_scan2_index[idx]
+            
+            point_2 = self.scan_2[idx_point_2]
             
             key = int( (str(point_1) + str(point_2)))
             closest_dist = np.sqrt(np.sum((point_1-point_2)**2))
+            """
 
             correspondance[key] = { 'point_in_pc_1': point_1, 
                                     'point_in_pc_2': point_2,
