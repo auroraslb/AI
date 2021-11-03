@@ -29,6 +29,9 @@ class State():
 
         self.R = np.eye(3)
         self.t = [0,0,0]
+    
+    def node_print(self):
+        print("State: ", self.x_min, " ", self.x_max, " ", self.y_min, " ", self.y_max, " ", self.z_min, " ", self.z_max)
 
 
 class align_3d_search_problem(search.Problem):
@@ -73,6 +76,7 @@ class align_3d_search_problem(search.Problem):
         :return: Tuple with all possible actions
         :rtype: Tuple
         """
+        """
         available_actions = ()
         
         if state.x_min != state.x_max:
@@ -83,6 +87,10 @@ class align_3d_search_problem(search.Problem):
 
         if state.z_min != state.z_max:
             available_actions = available_actions + ('z+',) +('z-',)
+        """
+
+        available_actions = ['x+','x-','y+','y-','z+','z-']
+
 
         return available_actions
 
@@ -105,7 +113,9 @@ class align_3d_search_problem(search.Problem):
         :rtype: State
         """
 
-        print(action, type(action))
+        #print(action, type(action))
+
+        #print("Original state: ", state)
 
         x_min = state.x_min
         x_max = state.x_max
@@ -120,7 +130,7 @@ class align_3d_search_problem(search.Problem):
                 x_max = x_min + (x_max - x_min)//2
             else:
                 x_max = x_max
-                x_min = x_min + (x_max - x_min)//2
+                x_min = x_max - (x_max - x_min)//2
 
         if action[0] == 'y':
             if action[1] == '-':
@@ -128,7 +138,7 @@ class align_3d_search_problem(search.Problem):
                 y_max = y_min + (y_max - y_min)//2
             else:
                 y_max = y_max
-                y_min = y_min + (y_max - y_min)//2
+                y_min = y_max - (y_max - y_min)//2
 
         if action[0] == 'z':
             if action[1] == '-':
@@ -136,7 +146,7 @@ class align_3d_search_problem(search.Problem):
                 z_max = z_min + (z_max - z_min)//2
             else:
                 z_max = z_max
-                z_min = z_min + (z_max - z_min)//2
+                z_min = z_max - (z_max - z_min)//2
 
         return State(x_min, x_max, y_min, y_max, z_min, z_max)
 
@@ -147,8 +157,6 @@ class align_3d_search_problem(search.Problem):
             distance_vec = np.linalg.norm(scan2-point, axis = 1)
             min = np.amin(distance_vec)
             distances += min**2
-
-        print(np.sqrt(distances))
 
         return np.sqrt(distances)
 
@@ -168,43 +176,49 @@ class align_3d_search_problem(search.Problem):
         :return: returns true or false, whether it represents a node state or not
         :rtype: bool
         """
-        print('x_min:', state.x_min, 'x_max:', state.x_max)
-        print('y_min:', state.y_min, 'y_max:', state.y_max)
-        print('z_min:', state.z_min, 'z_max:', state.z_max)
+
+        #gamma = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
+        #beta = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
+        #alpha = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
 
         x_avg = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
         y_avg = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
         z_avg = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
 
-        rot_x = [[1, 0, 0, 0, cos(x_avg), -sin(x_avg), 0, sin(x_avg), cos(x_avg)]]
-        rot_y = [[cos(y_avg), 0, sin(y_avg), 0, 1, 0, -sin(y_avg), 0, cos(y_avg)]]
-        rot_z = [[cos(z_avg), -sin(z_avg), 0, sin(z_avg), cos(z_avg), 0, 0, 0, 1]]
+        rot_x = np.array([[1, 0, 0], [0, cos(x_avg), -sin(x_avg)], [0, sin(x_avg), cos(x_avg)]])
+        rot_y = np.array([[cos(y_avg), 0, sin(y_avg)], [0, 1, 0], [-sin(y_avg), 0, cos(y_avg)]])
+        rot_z = np.array([[cos(z_avg), -sin(z_avg), 0], [sin(z_avg), cos(z_avg), 0], [0, 0, 1]])
 
-        rot_x = np.array(rot_x).reshape((3,3))
-        rot_y = np.array(rot_y).reshape((3,3))
-        rot_z = np.array(rot_z).reshape((3,3))
+        rot_avg = np.matmul(rot_z, np.matmul(rot_y, rot_x))
 
-        rot_avg = np.dot(rot_x, np.dot(rot_y, rot_z))
+        #rot_avg = np.array([[cos(alpha)*cos(beta), cos(alpha)*sin(beta)*sin(gamma)-sin(alpha)*cos(gamma), cos(alpha)*sin(beta)*cos(gamma)+sin(alpha)*sin(gamma)], 
+        #                    [sin(alpha)*cos(beta), sin(alpha)*sin(beta)*sin(gamma)+cos(alpha)*cos(gamma), sin(alpha)*sin(beta)*cos(gamma)-cos(alpha)*sin(gamma)], 
+        #                    [-sin(beta), cos(beta)*sin(gamma), cos(beta)*cos(gamma)]])
+        #Much slower
 
-        scan1_updated = np.dot(self.scan1,rot_avg)
+        scan1_updated = np.matmul(rot_avg, self.scan1.T).T
 
-        reg = registration_iasd(scan1_updated, self.scan2)
+        rng = np.random.default_rng()
+        scan1_sample = rng.choice(scan1_updated, len(scan1_updated)//10)
+        scan2_sample = rng.choice(self.scan2, len(self.scan2)//10)
 
-        R, t = reg.get_compute()
+        if self._distance(scan1_sample, scan2_sample) < 0.1:
 
-        new_r = np.dot(R, rot_avg)
+            reg = registration_iasd(scan1_updated, self.scan2)
 
-        rotated_scan1 = np.dot(self.scan1, new_r)
+            R, t = reg.get_compute()
+            print("slow")
 
-        scan1_sorted = np.sort(rotated_scan1)
-        scan2_sorted = np.sort(self.scan2)
+            num_points, _ = scan1_updated.shape
+            scan1_updated = (
+                            np.matmul(R, scan1_updated.T) +
+                            np.matmul(t.reshape((3,1)),np.ones((1,num_points)))
+                            ).T
 
-        if self._distance(rotated_scan1, self.scan2) < 0.5:
-        #np.allclose(scan1_sorted, scan2_sorted, rtol=0.5, atol=0.05):
-        #self._distance(rotated_scan1, self.scan2) < 1:
-            state.R = new_r
-            state.t = t
-            return True
+            if self._distance(scan1_updated, self.scan2) < 0.000001:
+                state.R = np.matmul(R, rot_avg)
+                state.t = t
+                return True
 
         return False
 
@@ -256,9 +270,16 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
-    output = search.breadth_first_graph_search(align_3d_search_problem(scan1, scan2))
 
-    print(output!=None)
+    scan1_average = np.mean(scan1, axis=0)
+    scan2_average = np.mean(scan2, axis=0)
 
-    return output!=None, output.state.R, output.state.t, output.depth
+    scan1_aligned = scan1 - scan1_average
+    scan2_aligned = scan2 - scan2_average
+
+    output = search.breadth_first_graph_search(align_3d_search_problem(scan1_aligned, scan2_aligned))
+
+    translation = output.state.t # - np.dot(np.linalg.inv(output.state.R), scan1_average.T).T + scan2_average
+
+    return output!=None, output.state.R, translation, output.depth
     
