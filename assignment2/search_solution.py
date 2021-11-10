@@ -128,7 +128,7 @@ class align_3d_search_problem(search.Problem):
                 x_max = x_max
                 x_min = x_max - (x_max - x_min)//2
 
-        if action[0] == 'y':
+        elif action[0] == 'y':
             if action[1] == '-':
                 y_min = y_min
                 y_max = y_min + (y_max - y_min)//2
@@ -136,7 +136,7 @@ class align_3d_search_problem(search.Problem):
                 y_max = y_max
                 y_min = y_max - (y_max - y_min)//2
 
-        if action[0] == 'z':
+        elif action[0] == 'z':
             if action[1] == '-':
                 z_min = z_min
                 z_max = z_min + (z_max - z_min)//2
@@ -182,22 +182,22 @@ class align_3d_search_problem(search.Problem):
         #beta = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
         #alpha = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
 
-        x_avg = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
-        y_avg = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
-        z_avg = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
+        x_mid = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
+        y_mid = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
+        z_mid = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
 
-        rot_x = np.array([[1, 0, 0], [0, cos(x_avg), -sin(x_avg)], [0, sin(x_avg), cos(x_avg)]])
-        rot_y = np.array([[cos(y_avg), 0, sin(y_avg)], [0, 1, 0], [-sin(y_avg), 0, cos(y_avg)]])
-        rot_z = np.array([[cos(z_avg), -sin(z_avg), 0], [sin(z_avg), cos(z_avg), 0], [0, 0, 1]])
+        rot_x = np.array([[1, 0, 0], [0, cos(x_mid), -sin(x_mid)], [0, sin(x_mid), cos(x_mid)]])
+        rot_y = np.array([[cos(y_mid), 0, sin(y_mid)], [0, 1, 0], [-sin(y_mid), 0, cos(y_mid)]])
+        rot_z = np.array([[cos(z_mid), -sin(z_mid), 0], [sin(z_mid), cos(z_mid), 0], [0, 0, 1]])
 
-        rot_avg = np.matmul(rot_z, np.matmul(rot_y, rot_x))
+        rotation_matrix = np.matmul(rot_z, np.matmul(rot_y, rot_x))
 
-        #rot_avg = np.array([[cos(alpha)*cos(beta), cos(alpha)*sin(beta)*sin(gamma)-sin(alpha)*cos(gamma), cos(alpha)*sin(beta)*cos(gamma)+sin(alpha)*sin(gamma)], 
+        #rotation_matrix = np.array([[cos(alpha)*cos(beta), cos(alpha)*sin(beta)*sin(gamma)-sin(alpha)*cos(gamma), cos(alpha)*sin(beta)*cos(gamma)+sin(alpha)*sin(gamma)], 
         #                    [sin(alpha)*cos(beta), sin(alpha)*sin(beta)*sin(gamma)+cos(alpha)*cos(gamma), sin(alpha)*sin(beta)*cos(gamma)-cos(alpha)*sin(gamma)], 
         #                    [-sin(beta), cos(beta)*sin(gamma), cos(beta)*cos(gamma)]])
         #Much slower
 
-        scan1_updated = np.matmul(rot_avg, self.scan1.T).T
+        scan1_updated = np.matmul(rotation_matrix, self.scan1.T).T
 
         rng = np.random.default_rng()
         scan1_sample = rng.choice(scan1_updated, int(len(scan1_updated)*0.1))
@@ -216,7 +216,7 @@ class align_3d_search_problem(search.Problem):
             reg = registration_iasd(scan1_updated, self.scan2)
 
             R, t = reg.get_compute()
-            print("x_avg: ", x_avg, ", y_avg: ", y_avg, " , z_avg: ", z_avg)
+            print("x_mid: ", x_mid, ", y_mid: ", y_mid, " , z_mid: ", z_mid)
 
             num_points, _ = scan1_updated.shape
             scan1_updated = (
@@ -225,7 +225,7 @@ class align_3d_search_problem(search.Problem):
                             ).T
 
             if self._distance(scan1_updated, self.scan2) < 0.000001:
-                state.R = np.matmul(R, rot_avg)
+                state.R = np.matmul(R, rotation_matrix)
                 state.t = t
                 return True
 
@@ -298,9 +298,15 @@ def compute_alignment(
     scan1_aligned = scan1 - scan1_average
     scan2_aligned = scan2 - scan2_average
 
-    output = search.breadth_first_graph_search(align_3d_search_problem(scan1_aligned, scan2_aligned))
+    output = search.breadth_first_graph_search(align_3d_search_problem(scan1_aligned, scan2_aligned)) #scan2_aligned
 
-    translation = output.state.t # - np.dot(np.linalg.inv(output.state.R), scan1_average.T).T + scan2_average
+    print('R:', output.state.R.shape) # (3,3)
+    print('t', output.state.t.shape) # (3,)
+    print('aligned', scan1_aligned.shape) #(756,3)
+    print('average', scan1_average.shape)
+
+    #translation = output.state.t + np.dot(output.state.R, scan1_average.T) - scan1_average - scan1_average + scan2_average  # - np.dot(np.linalg.inv(output.state.R), scan1_average.T).T + scan2_average
+    translation = - np.dot(output.state.R, scan1_average.T) + output.state.t + scan2_average
 
     return output!=None, output.state.R, translation, output.depth
     
