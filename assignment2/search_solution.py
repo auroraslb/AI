@@ -76,7 +76,7 @@ class align_3d_search_problem(search.Problem):
         :return: Tuple with all possible actions
         :rtype: Tuple
         """
-        """
+        #"""
         available_actions = ()
         
         if state.x_min != state.x_max:
@@ -87,9 +87,9 @@ class align_3d_search_problem(search.Problem):
 
         if state.z_min != state.z_max:
             available_actions = available_actions + ('z+',) +('z-',)
-        """
+        #"""
 
-        available_actions = ['x+','x-','y+','y-','z+','z-']
+        #available_actions = ['x+','x-','y+','y-','z+','z-']
 
 
         return available_actions
@@ -112,10 +112,6 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
-
-        #print(action, type(action))
-
-        #print("Original state: ", state)
 
         x_min = state.x_min
         x_max = state.x_max
@@ -159,8 +155,13 @@ class align_3d_search_problem(search.Problem):
             distances += min**2
 
         return np.sqrt(distances)
+    
+    def _distance_point(self, point1, scan2):
 
+        distance_vec = np.linalg.norm(scan2-point1, axis = 1)
+        #min = np.amin(distance_vec)
 
+        return np.amin(distance_vec) #np.sqrt(distances)
 
     def goal_test(
             self,
@@ -198,16 +199,23 @@ class align_3d_search_problem(search.Problem):
 
         scan1_updated = np.matmul(rot_avg, self.scan1.T).T
 
-        rng = np.random.default_rng()
-        scan1_sample = rng.choice(scan1_updated, len(scan1_updated)//10)
-        scan2_sample = rng.choice(self.scan2, len(self.scan2)//10)
+        #rng = np.random.default_rng()
+        #scan1_sample = rng.choice(scan1_updated, len(self.scan2)//200)
+        #scan2_sample = rng.choice(self.scan2, len(self.scan2)//10)
 
-        if self._distance(scan1_sample, scan2_sample) < 0.1:
+        #if self._distance_point(scan1_updated, self.scan2) < 0.01:
+        #if self._distance_point(scan1_updated[np.random.randint(0,len(scan1_updated))], self.scan2) < 0.01:
+        scan1_average = np.mean(scan1_updated, axis=0)
+        scan2_average = np.mean(self.scan2, axis=0)
+        #print(np.linalg.norm(scan1_average-scan2_average))
+        if np.linalg.norm(scan1_average-scan2_average) < 1e-17:
+            print(scan1_average)
+            print(scan2_average)
 
             reg = registration_iasd(scan1_updated, self.scan2)
 
             R, t = reg.get_compute()
-            print("slow")
+            print("x_avg: ", x_avg, ", y_avg: ", y_avg, " , z_avg: ", z_avg)
 
             num_points, _ = scan1_updated.shape
             scan1_updated = (
