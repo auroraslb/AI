@@ -1,10 +1,13 @@
 from typing import Tuple
 from numpy import array
 import search
+import numpy as np
+from math import pi, sin, cos
 
 # you can want to use the class registration_iasd
 # from your solution.py (from previous assignment)
 from solution import registration_iasd
+
 
 # Choose what you think it is the best data structure
 # for representing actions.
@@ -12,7 +15,23 @@ Action = None
 
 # Choose what you think it is the best data structure
 # for representing states.
-State = None
+
+
+class State():
+
+    def __init__(self, x_min = -180, x_max = 180, y_min = -180, y_max = 180, z_min = -180, z_max = 180):
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.z_min = z_min
+        self.z_max = z_max
+
+        self.R = np.eye(3)
+        self.t = [0,0,0]
+    
+    def node_print(self):
+        print("State: ", self.x_min, " ", self.x_max, " ", self.y_min, " ", self.y_max, " ", self.z_min, " ", self.z_max)
 
 
 class align_3d_search_problem(search.Problem):
@@ -34,7 +53,12 @@ class align_3d_search_problem(search.Problem):
         # Creates an initial state.
         # You may want to change this to something representing
         # your initial state.
-        self.initial = None 
+
+        self.scan1 = scan1
+        self.scan2 = scan2
+
+        self.initial = State()
+        
 
         return
 
@@ -52,8 +76,24 @@ class align_3d_search_problem(search.Problem):
         :return: Tuple with all possible actions
         :rtype: Tuple
         """
+        #"""
+        available_actions = ()
+        
+        if state.x_min != state.x_max:
+            available_actions = available_actions + ('x+',) +('x-',)
+        
+        if state.y_min != state.y_max:
+            available_actions = available_actions + ('y+',) +('y-',)
 
-        pass
+        if state.z_min != state.z_max:
+            available_actions = available_actions + ('z+',) +('z-',)
+        #"""
+
+        #available_actions = ['x+','x-','y+','y-','z+','z-']
+
+
+        return available_actions
+
 
 
     def result(
@@ -72,9 +112,56 @@ class align_3d_search_problem(search.Problem):
         :return: A new state
         :rtype: State
         """
-        
-        pass
 
+        x_min = state.x_min
+        x_max = state.x_max
+        y_min = state.y_min
+        y_max = state.y_max
+        z_min = state.z_min
+        z_max = state.z_max
+
+        if action[0] == 'x':
+            if action[1] == '-':
+                x_min = x_min
+                x_max = x_min + (x_max - x_min)//2
+            else:
+                x_max = x_max
+                x_min = x_max - (x_max - x_min)//2
+
+        elif action[0] == 'y':
+            if action[1] == '-':
+                y_min = y_min
+                y_max = y_min + (y_max - y_min)//2
+            else:
+                y_max = y_max
+                y_min = y_max - (y_max - y_min)//2
+
+        elif action[0] == 'z':
+            if action[1] == '-':
+                z_min = z_min
+                z_max = z_min + (z_max - z_min)//2
+            else:
+                z_max = z_max
+                z_min = z_max - (z_max - z_min)//2
+
+        return State(x_min, x_max, y_min, y_max, z_min, z_max)
+
+    def _distance(self, scan1, scan2):
+        distances = 0
+
+        for point in scan1:
+            distance_vec = np.linalg.norm(scan2-point, axis = 1)
+            min = np.amin(distance_vec)
+            distances += min**2
+
+        return np.sqrt(distances)
+    
+    def _distance_point(self, point1, scan2):
+
+        distance_vec = np.linalg.norm(scan2-point1, axis = 1)
+        #min = np.amin(distance_vec)
+
+        return np.amin(distance_vec) #np.sqrt(distances)
 
     def goal_test(
             self,
@@ -90,8 +177,63 @@ class align_3d_search_problem(search.Problem):
         :return: returns true or false, whether it represents a node state or not
         :rtype: bool
         """
-        
-        pass
+
+        #gamma = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
+        #beta = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
+        #alpha = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
+
+        x_mid = (state.x_min + (state.x_max - state.x_min)/2) * pi/180
+        y_mid = (state.y_min + (state.y_max - state.y_min)/2) * pi/180
+        z_mid = (state.z_min + (state.z_max - state.z_min)/2) * pi/180
+
+        rot_x = np.array([[1, 0, 0], [0, cos(x_mid), -sin(x_mid)], [0, sin(x_mid), cos(x_mid)]])
+        rot_y = np.array([[cos(y_mid), 0, sin(y_mid)], [0, 1, 0], [-sin(y_mid), 0, cos(y_mid)]])
+        rot_z = np.array([[cos(z_mid), -sin(z_mid), 0], [sin(z_mid), cos(z_mid), 0], [0, 0, 1]])
+
+        rotation_matrix = np.matmul(rot_z, np.matmul(rot_y, rot_x))
+
+        #rotation_matrix = np.array([[cos(alpha)*cos(beta), cos(alpha)*sin(beta)*sin(gamma)-sin(alpha)*cos(gamma), cos(alpha)*sin(beta)*cos(gamma)+sin(alpha)*sin(gamma)], 
+        #                    [sin(alpha)*cos(beta), sin(alpha)*sin(beta)*sin(gamma)+cos(alpha)*cos(gamma), sin(alpha)*sin(beta)*cos(gamma)-cos(alpha)*sin(gamma)], 
+        #                    [-sin(beta), cos(beta)*sin(gamma), cos(beta)*cos(gamma)]])
+        #Much slower
+
+        scan1_updated = np.matmul(rotation_matrix, self.scan1.T).T
+
+        rng = np.random.default_rng()
+        scan1_sample = rng.choice(scan1_updated, int(len(scan1_updated)*0.1))
+        print(scan1_sample)
+        #scan2_sample = rng.choice(self.scan2, len(self.scan2)//10)
+
+        #if self._distance_point(scan1_updated, self.scan2) < 0.01:
+        #if self._distance_point(scan1_updated[np.random.randint(0,len(scan1_updated))], self.scan2) < 0.01:
+        #scan1_average = np.mean(scan1_updated, axis=0)
+        #scan2_average = np.mean(self.scan2, axis=0)
+        #print(np.linalg.norm(scan1_average-scan2_average))
+        #if np.linalg.norm(scan1_average-scan2_average) < 1e-17:
+        if self._distance(scan1_sample, self.scan2) < 0.5:
+            #print(scan1_average)
+            #print(scan2_average)
+
+            reg = registration_iasd(scan1_updated, self.scan2)
+
+            R, t = reg.get_compute()
+            print("x_mid: ", x_mid, ", y_mid: ", y_mid, " , z_mid: ", z_mid)
+
+            num_points, _ = scan1_updated.shape
+            scan1_updated = (
+                            np.matmul(R, scan1_updated.T) +
+                            np.matmul(t.reshape((3,1)),np.ones((1,num_points)))
+                            ).T
+
+            rng2 = np.random.default_rng()
+            scan1_updated = rng2.choice(scan1_updated, int(len(scan1_updated)*0.75))
+            
+            if self._distance(scan1_updated, self.scan2) < 0.1:
+                state.R = np.matmul(R, rotation_matrix)
+                state.t = t
+                return True
+
+        return False
 
 
     def path_cost(
@@ -121,14 +263,17 @@ class align_3d_search_problem(search.Problem):
 
         pass
 
-    def heuristic( self, node):
-        """Returns the heuristic at a specific node.
-        note: use node.state to access the state
-        :param node: node to include the heuristic
-        :return: heuristic value
-        :rtype: float
-        """
-        pass
+    def heuristic(
+                self,
+                node) -> float:
+            """Returns the heuristic at a specific node.
+            note: use node.state to access the state
+            :param node: node to include the heuristic
+            :return: heuristic value
+            :rtype: float
+            """
+        
+            pass
 
 
 def compute_alignment(
@@ -150,5 +295,22 @@ def compute_alignment(
         solution in the proposes search tree.
     :rtype: Tuple[bool, array, array, int]
     """
+
+    scan1_average = np.mean(scan1, axis=0)
+    scan2_average = np.mean(scan2, axis=0)
+
+    scan1_aligned = scan1 - scan1_average
+    scan2_aligned = scan2 - scan2_average
+
+    output = search.breadth_first_graph_search(align_3d_search_problem(scan1_aligned, scan2_aligned)) #scan2_aligned
+
+    print('R:', output.state.R.shape) # (3,3)
+    print('t', output.state.t.shape) # (3,)
+    print('aligned', scan1_aligned.shape) #(756,3)
+    print('average', scan1_average.shape)
+
+    #translation = output.state.t + np.dot(output.state.R, scan1_average.T) - scan1_average - scan1_average + scan2_average  # - np.dot(np.linalg.inv(output.state.R), scan1_average.T).T + scan2_average
+    translation = - np.dot(output.state.R, scan1_average.T) + output.state.t + scan2_average
+
+    return output!=None, output.state.R, translation, output.depth
     
-    pass
