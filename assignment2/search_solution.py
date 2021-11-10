@@ -199,18 +199,19 @@ class align_3d_search_problem(search.Problem):
 
         scan1_updated = np.matmul(rot_avg, self.scan1.T).T
 
-        #rng = np.random.default_rng()
-        #scan1_sample = rng.choice(scan1_updated, len(self.scan2)//200)
+        rng = np.random.default_rng()
+        scan1_sample = rng.choice(scan1_updated, int(len(scan1_updated)*0.1))
         #scan2_sample = rng.choice(self.scan2, len(self.scan2)//10)
 
         #if self._distance_point(scan1_updated, self.scan2) < 0.01:
         #if self._distance_point(scan1_updated[np.random.randint(0,len(scan1_updated))], self.scan2) < 0.01:
-        scan1_average = np.mean(scan1_updated, axis=0)
-        scan2_average = np.mean(self.scan2, axis=0)
+        #scan1_average = np.mean(scan1_updated, axis=0)
+        #scan2_average = np.mean(self.scan2, axis=0)
         #print(np.linalg.norm(scan1_average-scan2_average))
-        if np.linalg.norm(scan1_average-scan2_average) < 1e-17:
-            print(scan1_average)
-            print(scan2_average)
+        #if np.linalg.norm(scan1_average-scan2_average) < 1e-17:
+        if self._distance(scan1_sample, self.scan2) < 0.1:
+            #print(scan1_average)
+            #print(scan2_average)
 
             reg = registration_iasd(scan1_updated, self.scan2)
 
@@ -257,6 +258,18 @@ class align_3d_search_problem(search.Problem):
         """
 
         pass
+
+    def heuristic(
+                self,
+                node) -> float:
+            """Returns the heuristic at a specific node.
+            note: use node.state to access the state
+            :param node: node to include the heuristic
+            :return: heuristic value
+            :rtype: float
+            """
+        
+            pass
 
 
 def compute_alignment(
