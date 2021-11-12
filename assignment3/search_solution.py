@@ -2,7 +2,7 @@ from typing import Tuple
 from numpy import array
 import search
 import numpy as np
-from math import pi, sin, cos
+from math import dist, pi, sin, cos
 import random
 
 # you can want to use the class registration_iasd
@@ -173,23 +173,27 @@ class align_3d_search_problem(search.Problem):
 
         scan1_updated = np.matmul(rotation_matrix, self.scan1.T).T
         
-        scan1_sample = random.choices(scan1_updated, k = int(len(scan1_updated)*0.1))
+        scan1_sample = random.choices(scan1_updated, k = int(len(scan1_updated)*0.3))
 
-        if self._distance(scan1_sample, self.scan2) < 0.5:
+        sample_distance = self._distance(scan1_sample, self.scan2)
 
+        if  sample_distance < 0.2:
+            print('Hello get_compute', sample_distance)
             reg = registration_iasd(scan1_updated, self.scan2)
 
             R, t = reg.get_compute()
 
             num_points, _ = scan1_updated.shape
-            scan1_updated = (
-                            np.matmul(R, scan1_updated.T) +
-                            np.matmul(t.reshape((3,1)),np.ones((1,num_points)))
-                            ).T
+            scan1_updated = (   np.matmul(R, scan1_updated.T) +
+                                np.matmul(t.reshape((3,1)),np.ones((1,num_points)))
+                                ).T
 
-            scan1_updated = random.choices(scan1_updated, k = int(len(scan1_updated)*0.75))
+            #scan1_updated = random.choices(scan1_updated, k = int(len(scan1_updated)*0.75))
+
+            final_distance = self._distance(scan1_updated, self.scan2)
+            print('Final distance', final_distance)
             
-            if self._distance(scan1_updated, self.scan2) < 0.1:
+            if  final_distance < 0.2:
                 state.R = np.matmul(R, rotation_matrix)
                 state.t = t
                 return True
@@ -223,17 +227,31 @@ class align_3d_search_problem(search.Problem):
 
         pass
 
-    def heuristic(
-                self,
-                node) -> float:
-            """Returns the heuristic at a specific node.
-            note: use node.state to access the state
-            :param node: node to include the heuristic
-            :return: heuristic value
-            :rtype: float
-            """
+    def heuristic(self, node) -> float:
+        """Returns the heuristic at a specific node.
+        note: use node.state to access the state
+        :param node: node to include the heuristic
+        :return: heuristic value
+        :rtype: float
+        """
         
-            pass
+        x_mid = (node.state.x_min + (node.state.x_max - node.state.x_min)/2) * pi/180
+        y_mid = (node.state.y_min + (node.state.y_max - node.state.y_min)/2) * pi/180
+        z_mid = (node.state.z_min + (node.state.z_max - node.state.z_min)/2) * pi/180
+
+        rot_x = np.array([[1, 0, 0], [0, cos(x_mid), -sin(x_mid)], [0, sin(x_mid), cos(x_mid)]])
+        rot_y = np.array([[cos(y_mid), 0, sin(y_mid)], [0, 1, 0], [-sin(y_mid), 0, cos(y_mid)]])
+        rot_z = np.array([[cos(z_mid), -sin(z_mid), 0], [sin(z_mid), cos(z_mid), 0], [0, 0, 1]])
+
+        rotation_matrix = np.matmul(rot_z, np.matmul(rot_y, rot_x))
+
+        scan1_updated = np.matmul(rotation_matrix, self.scan1.T).T
+        
+        scan1_sample = random.choices(scan1_updated, k = int(len(scan1_updated)*0.4))
+
+        distance = self._distance(scan1_sample, self.scan2)
+
+        return distance
 
 
 def compute_alignment(
@@ -261,7 +279,8 @@ def compute_alignment(
     scan1_aligned = scan1 - scan1_average
     scan2_aligned = scan2 - scan2_average
 
-    output = search.breadth_first_graph_search(align_3d_search_problem(scan1_aligned, scan2_aligned))
+    problem = align_3d_search_problem(scan1_aligned, scan2_aligned)
+    output = search.greedy_best_first_graph_search(problem, f = problem.heuristic)
 
     translation = - np.dot(output.state.R, scan1_average.T) + output.state.t + scan2_average
 
